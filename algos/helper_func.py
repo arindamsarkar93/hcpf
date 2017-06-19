@@ -8,6 +8,7 @@ import edward as ed
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
+from edward.models import Poisson,Gamma
 
 
 # In[ ]:
@@ -50,38 +51,57 @@ def load_data():
 # In[ ]:
 
 
-def ndcg_score(users,items,train_mask,X,result):
+def ndcg_score(test_mask,X,result):
         
-    ndcg = 0
+    ndcg = 0.0
+    users = X.shape[0]
+    items = X.shape[1]
     for i in range(0,users):
-        sort_index = np.argsort(result[i])[::-1]
-        score = 0
-        norm = 0
-        count = 1
+        result_sort_index = np.argsort(result[i])[::-1]
+        data_sort_index = np.argsort(X[i])[::-1]
+        score = 0.0
+        norm = 0.0
         
         for j in range(0,items):
-                if train_mask[i,sort_index[j]] == 0 and X[i,sort_index[j]] == 1:
-                    count += 1
-                    norm += 1.0/np.log2(count)
-                    score += 1.0/np.log2(j+2)
+                if test_mask[i,data_sort_index[j]] == 1:
+                    norm += X[i,data_sort_index[j]]/np.log2(j+2)
+                if test_mask[i,result_sort_index[j]] == 1:    
+                    score += X[i,result_sort_index[j]]/np.log2(j+2)
         if norm != 0:
             ndcg += score/norm
         else:
             ndcg += 0
     ndcg /= users
+    del result_sort_index
+    del data_sort_index
     return ndcg
 
 
+def mae(test_mask,X,result):
+
+    count = 0.0
+    error = 0.0
+    users = X.shape[0]
+    items = X.shape[1]
+    for i in range(0,users):
+        for j in range(0,items):
+            if test_mask[i,j] == 1:
+                count += 1
+                error += abs(X[i,j]-result[i,j])
+
+    return error/count
 # In[ ]:
 
 
-def check(q_theta,q_beta,users,items,train_mask,X,no_sample=100,metric='ndcg'):
+def check(a_s,bs,av,bv,test_mask,X,no_sample=100,metric='ndcg'):
     
-    q_theta = Gamma(gam_shp,gam_rte)
-    q_beta = Gamma(lam_shp,lam_rte)
+    q_theta = Gamma(a_s,bs)
+    q_beta = Gamma(av,bv)
     sess = tf.InteractiveSession()
     init = tf.global_variables_initializer()
     init.run()
+    users = bs.shape[0]
+    items = bv.shape[0]
     beta_sample = q_beta.sample(no_sample).eval()
     theta_sample = q_theta.sample(no_sample).eval()
     result = np.zeros([users,items])
@@ -89,8 +109,15 @@ def check(q_theta,q_beta,users,items,train_mask,X,no_sample=100,metric='ndcg'):
         result = np.add(result,np.matmul(theta_sample[i],np.transpose(beta_sample[i])))
     result /= no_sample
     
-    if metric == 'mae':
-        return mae(users,items,train_mask,X,result)
-    elif metric == 'ndcg':
-        return ndcg_score(users,items,train_mask,X,result)
+    del q_theta
+    del q_beta
+    del beta_sample
+    del theta_sample
 
+    if metric == 'mae':
+        to_return = mae(test_mask,X,result)
+    elif metric == 'ndcg':
+        to_return = ndcg_score(test_mask,X,result)
+    
+    del result
+    return to_return
