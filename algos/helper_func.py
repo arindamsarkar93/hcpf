@@ -39,9 +39,9 @@ def num_non_zero(mat):   ## takes a 2 dimensional numpy array
 
 
 def load_data():
-    X = np.loadtxt('../data/movielens/X.txt',delimiter=' ')
-    x_train_mask = np.loadtxt('../data/movielens/train_mask.txt')
-    x_test_mask = np.loadtxt('../data/movielens/test_mask.txt')
+    X = np.loadtxt('../data/bibtex/X_train.txt',delimiter=',')
+    x_train_mask = np.loadtxt('../data/bibtex/x_train_mask.txt')
+    x_test_mask = np.loadtxt('../data/bibtex/x_test_mask.txt')
     x = X*x_train_mask
     #y = Y*y_train_mask
     return X,x,x_test_mask
@@ -61,12 +61,15 @@ def ndcg_score(test_mask,X,result):
         data_sort_index = np.argsort(X[i])[::-1]
         score = 0.0
         norm = 0.0
-        
+        count1 = count2 = 1.0
+
         for j in range(0,items):
                 if test_mask[i,data_sort_index[j]] == 1:
-                    norm += X[i,data_sort_index[j]]/np.log2(j+2)
-                if test_mask[i,result_sort_index[j]] == 1:    
-                    score += X[i,result_sort_index[j]]/np.log2(j+2)
+                    count1 += 1
+                    norm += X[i,data_sort_index[j]]/np.log2(count1)
+                if test_mask[i,result_sort_index[j]] == 1:
+                    count2 += 1
+                    score += X[i,result_sort_index[j]]/np.log2(count2)
         if norm != 0:
             ndcg += score/norm
         else:

@@ -65,5 +65,13 @@ class ztp_response:
             sum_ele += data[non_zero_indices[rand_ind][0],non_zero_indices[rand_ind][1]]
         mu = sum_ele/no_sample
         self.lam = lambertw(-np.exp(-mu)*mu) + mu
-    def expectation(self,response,a_ui,n_trunc):
-        return 
+    
+    # def expectation(self,response,a_ui,n_trunc):
+        
+    #     const = np.log(a_ui/(np.exp(self.lam)-1))
+    #     inter = np.zeros(shape=n_trunc)
+    #     for i in range(1,n_trunc+1):
+    #         temp1 = i * const
+    #         t
+
+    #     return expec 
