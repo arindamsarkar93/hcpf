@@ -23,14 +23,26 @@ def num_non_zero(mat):   ## takes a 2 dimensional numpy array
     return num
 
 
-def load_data():
-    X = np.loadtxt('../data/movielens/X.txt',delimiter=' ')  #np.loadtxt('../data/bibtex/X_train.txt',delimiter=',')
-    x_train_mask = np.loadtxt('../data/movielens/train_mask.txt')  #np.loadtxt('../data/bibtex/x_train_mask.txt')
-    x_test_mask = np.loadtxt('../data/movielens/test_mask.txt')   #np.loadtxt('../data/bibtex/x_test_mask.txt')
-    x = X*x_train_mask
-    #y = Y*y_train_mask
-    return X,x,x_test_mask
-    
+def load_data(dataset):
+    if dataset=="bibx":
+        X = np.loadtxt('../data/bibtex/X_train.txt',delimiter=',')
+        x_train_mask = np.loadtxt('../data/bibtex/x_train_mask.txt')
+        x_test_mask = np.loadtxt('../data/bibtex/x_test_mask.txt')
+        x = X*x_train_mask
+        return X,x,x_test_mask
+    elif dataset=="biby":
+        X = np.loadtxt('../data/bibtex/Y_train.txt',delimiter=',')
+        x_train_mask = np.loadtxt('../data/bibtex/y_train_mask.txt')
+        x_test_mask = np.loadtxt('../data/bibtex/y_test_mask.txt')
+        x = X*x_train_mask
+        return X,x,x_test_mask
+    elif dataset=="movielens":
+        X = np.loadtxt('../data/movielens/X.txt',delimiter=',')
+        x_train_mask = np.loadtxt('../data/movielens/train_mask.txt')
+        x_test_mask = np.loadtxt('../data/movielens/test_mask.txt')
+        x = X*x_train_mask
+        return X,x,x_test_mask
+
 
 def ndcg_score(test_mask,X,result):
         
@@ -58,7 +70,6 @@ def ndcg_score(test_mask,X,result):
     ndcg /= users
     del result_sort_index
     del data_sort_index
-    gc.collect()
     return ndcg
 
 
@@ -92,5 +103,28 @@ def check(param,theta_sample,beta_sample,test_mask,X,metric='ndcg'):
         return mae(test_mask,X,param.sampled)
     elif metric == 'ndcg':
         return ndcg_score(test_mask,X,param.sampled)
+    gc.collect()
     
+def check_dual(param1,param2,theta_sample,beta1_sample,beta2_sample,\
+               test_mask1,test_mask2,X1,X2,metric='ndcg'):
+    
+    result1 = np.zeros(shape=[X1.shape[0],X1.shape[1]])
+    result2 = np.zeros(shape=[X2.shape[0],X2.shape[1]])
+    no_sample = theta_sample.shape[0]
+    for i in range(0,no_sample):
+        result1 = np.add(result1,np.matmul(theta_sample[i],beta1_sample[i]))
+        result2 = np.add(result2,np.matmul(theta_sample[i],beta2_sample[i]))
+    
+    result1 /= no_sample
+    result2 /= no_sample
+    param1.sample(result1)
+    param2.sample(result2)
+    
+    del result1
+    del result2
+    
+    if metric == 'mae':
+        return mae(test_mask1,X1,param1.sampled) + mae(test_mask2,X2,param2.sampled)
+    elif metric == 'ndcg':
+        return ndcg_score(test_mask1,X1,param1.sampled) + ndcg_score(test_mask2,X2,param.sampled)
     gc.collect()
