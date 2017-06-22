@@ -1,25 +1,17 @@
 
-# coding: utf-8
-
-# In[1]:
-
-
-import edward as ed
-import matplotlib.pyplot as plt
 import numpy as np
-import tensorflow as tf
 from scipy.misc import logsumexp
 from scipy.special import lambertw
 
-# In[5]:
-
-
 class poisson_response:
     
-    def __init__(self):
+    def __init__(self,users,items):
         self.lam = 0.0
+        self.sampled = np.zeros(shape=[users,items])
+        
     def set_param(self,lam):
         self.lam = lam
+        
     def get_param(self):
         return self.lam
     
@@ -44,34 +36,55 @@ class poisson_response:
         del q
         return expec
     
-    def update_param(self):    
-        return
+    def sample(self,count):
+        self.sampled = self.lam*count
+                               
 
-
-class ztp_response:
+class invgauss_response:
     
-    def __init__(self):
+    def __init__(self,users,items):
+        self.mu = 0.0
         self.lam = 0.0
-    def set_param(self,lam):
+        self.sampled = np.zeros(shape=[users,items])
+        
+    def set_param(self,mu,lam):
+        self.mu = mu
         self.lam = lam
+        
     def get_param(self):
-        return self.lam
+        return self.mu,self.lam
 
     def mle_update(self,non_zero_indices,data,no_sample):
         length = len(non_zero_indices)
         sum_ele = 0.0
+        rand_ind = np.random.randint(low=0,high=length,size=no_sample)
         for i in range(0,no_sample):
-            rand_ind = np.random.randint(low=0,high=length)
-            sum_ele += data[non_zero_indices[rand_ind][0],non_zero_indices[rand_ind][1]]
-        mu = sum_ele/no_sample
-        self.lam = lambertw(-np.exp(-mu)*mu) + mu
-    
-    # def expectation(self,response,a_ui,n_trunc):
+            sum_ele += data[non_zero_indices[rand_ind[i]][0],non_zero_indices[rand_ind[i]][1]]
+        self.mu = sum_ele/no_sample
         
-    #     const = np.log(a_ui/(np.exp(self.lam)-1))
-    #     inter = np.zeros(shape=n_trunc)
-    #     for i in range(1,n_trunc+1):
-    #         temp1 = i * const
-    #         t
+        for i in range(0,no_sample):
+            self.lam += (1.0/data[non_zero_indices[rand_ind[i]][0],non_zero_indices[rand_ind[i]][1]] - 1.0/self.mu)
+        self.lam /= no_sample
+        self.lam = 1.0/self.lam
+        del rand_ind
 
-    #     return expec 
+    def expectation(self,response,a_ui,n_trunc):
+
+        q = np.zeros(shape=n_trunc)
+        log_a = np.log(a_ui)
+        q[0] = self.lam*(1.0/self.mu - 0.5/response) + log_a
+        for i in range(2,n_trunc+1):
+            q[i-1] = self.lam*(i/self.mu - (i*i)/(2*response)) + i*log_a - (i-1)*np.log(i-1) + i - 2
+        norm = logsumexp(q)
+        q = np.exp(q-norm)
+        expec = 0.0
+        for i in range(1,n_trunc+1):
+            expec += i*q[i-1]
+        del q
+        return expec
+    
+    def sample(self,count):
+        
+        for i in range(0,self.sampled.shape[0]):
+            for j in range(0,self.sampled.shape[1]):
+                self.sampled[i,j] = np.random.wald(self.mu*count[i,j],self.lam*count[i,j]*count[i,j])

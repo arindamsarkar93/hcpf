@@ -1,18 +1,9 @@
 
-# coding: utf-8
-
-# In[ ]:
-
-
 import edward as ed
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-from edward.models import Poisson,Gamma
-
-
-# In[ ]:
-
+import gc
 
 def non_zero_entries(mat):   ## takes a 2 dimensional numpy array 
     indices = []
@@ -21,9 +12,6 @@ def non_zero_entries(mat):   ## takes a 2 dimensional numpy array
             if mat[i,j] > 0:
                 indices.append((i,j))
     return tuple(indices)
-
-
-# In[ ]:
 
 
 def num_non_zero(mat):   ## takes a 2 dimensional numpy array
@@ -35,21 +23,14 @@ def num_non_zero(mat):   ## takes a 2 dimensional numpy array
     return num
 
 
-# In[ ]:
-
-
 def load_data():
-    X = np.loadtxt('../data/bibtex/X_train.txt',delimiter=',')
-    x_train_mask = np.loadtxt('../data/bibtex/x_train_mask.txt')
-    x_test_mask = np.loadtxt('../data/bibtex/x_test_mask.txt')
+    X = np.loadtxt('../data/movielens/X.txt',delimiter=' ')  #np.loadtxt('../data/bibtex/X_train.txt',delimiter=',')
+    x_train_mask = np.loadtxt('../data/movielens/train_mask.txt')  #np.loadtxt('../data/bibtex/x_train_mask.txt')
+    x_test_mask = np.loadtxt('../data/movielens/test_mask.txt')   #np.loadtxt('../data/bibtex/x_test_mask.txt')
     x = X*x_train_mask
     #y = Y*y_train_mask
     return X,x,x_test_mask
     
-
-
-# In[ ]:
-
 
 def ndcg_score(test_mask,X,result):
         
@@ -77,6 +58,7 @@ def ndcg_score(test_mask,X,result):
     ndcg /= users
     del result_sort_index
     del data_sort_index
+    gc.collect()
     return ndcg
 
 
@@ -93,34 +75,22 @@ def mae(test_mask,X,result):
                 error += abs(X[i,j]-result[i,j])
 
     return error/count
-# In[ ]:
 
 
-def check(a_s,bs,av,bv,test_mask,X,no_sample=100,metric='ndcg'):
+def check(param,theta_sample,beta_sample,test_mask,X,metric='ndcg'):
     
-    q_theta = Gamma(a_s,bs)
-    q_beta = Gamma(av,bv)
-    sess = tf.InteractiveSession()
-    init = tf.global_variables_initializer()
-    init.run()
-    users = bs.shape[0]
-    items = bv.shape[0]
-    beta_sample = q_beta.sample(no_sample).eval()
-    theta_sample = q_theta.sample(no_sample).eval()
-    result = np.zeros([users,items])
+    result = np.zeros(shape=[X.shape[0],X.shape[1]])
+    no_sample = theta_sample.shape[0]
     for i in range(0,no_sample):
-        result = np.add(result,np.matmul(theta_sample[i],np.transpose(beta_sample[i])))
+        result = np.add(result,np.matmul(theta_sample[i],beta_sample[i]))
     result /= no_sample
-    
-    del q_theta
-    del q_beta
-    del beta_sample
-    del theta_sample
+    param.sample(result)
 
-    if metric == 'mae':
-        to_return = mae(test_mask,X,result)
-    elif metric == 'ndcg':
-        to_return = ndcg_score(test_mask,X,result)
-    
     del result
-    return to_return
+    
+    if metric == 'mae':
+        return mae(test_mask,X,param.sampled)
+    elif metric == 'ndcg':
+        return ndcg_score(test_mask,X,param.sampled)
+    
+    gc.collect()
