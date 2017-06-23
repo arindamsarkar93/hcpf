@@ -42,6 +42,10 @@ def load_data(dataset):
         x_test_mask = np.loadtxt('../data/movielens/test_mask.txt')
         x = X*x_train_mask
         return X,x,x_test_mask
+    elif dataset=="multi_bibtex":
+        x = np.loadtxt('../data/bibtex/X_test.txt',delimiter=',')
+        y = np.loadtxt('../data/bibtex/Y_test.txt',delimiter=',')
+        return x,y
 
 
 def ndcg_score(test_mask,X,result):
