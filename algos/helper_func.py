@@ -43,9 +43,11 @@ def load_data(dataset):
         x = X*x_train_mask
         return X,x,x_test_mask
     elif dataset=="multi_bibtex":
-        x = np.loadtxt('../data/bibtex/X_test.txt',delimiter=',')
-        y = np.loadtxt('../data/bibtex/Y_test.txt',delimiter=',')
-        return x,y
+        x_train = np.loadtxt('../data/bibtex/X_train.txt',delimiter=',')
+        y_train = np.loadtxt('../data/bibtex/Y_train.txt',delimiter=',')
+        x_test = np.loadtxt('../data/bibtex/X_test.txt',delimiter=',')
+        y_test = np.loadtxt('../data/bibtex/Y_test.txt',delimiter=',')
+        return x_train,y_train,x_test,y_test
 
 
 def ndcg_score(test_mask,X,result):
@@ -132,3 +134,11 @@ def check_dual(param1,param2,theta_sample,beta1_sample,beta2_sample,\
     elif metric == 'ndcg':
         return ndcg_score(test_mask1,X1,param1.sampled) + ndcg_score(test_mask2,X2,param.sampled)
     gc.collect()
+
+def patk(predict,actual,k=1):
+    indices = np.argsort(predict)[::-1][:k]
+    result = 0.0
+    for i in range(0,k):
+        if actual[indices[i]] != 0.0:
+            result += 1.0
+    return result
