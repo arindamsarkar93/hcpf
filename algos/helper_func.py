@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 import gc
+from sklearn.metrics import roc_auc_score as auc
 
 def non_zero_entries(mat):   ## takes a 2 dimensional numpy array 
     indices = []
@@ -37,7 +38,7 @@ def load_data(dataset):
         x = X*x_train_mask
         return X,x,x_test_mask
     elif dataset=="movielens":
-        X = np.loadtxt('../data/movielens/X.txt',delimiter=',')
+        X = np.loadtxt('../data/movielens/X.txt',delimiter=' ')
         x_train_mask = np.loadtxt('../data/movielens/train_mask.txt')
         x_test_mask = np.loadtxt('../data/movielens/test_mask.txt')
         x = X*x_train_mask
@@ -47,6 +48,12 @@ def load_data(dataset):
         y_train = np.loadtxt('../data/bibtex/Y_train.txt',delimiter=',')
         x_test = np.loadtxt('../data/bibtex/X_test.txt',delimiter=',')
         y_test = np.loadtxt('../data/bibtex/Y_test.txt',delimiter=',')
+        return x_train,y_train,x_test,y_test
+    elif dataset=="multi_eur":
+        x_train = np.loadtxt('../data/eurlex/x_train_sm.txt')
+        y_train = np.loadtxt('../data/eurlex/y_train_sm.txt')
+        x_test = np.loadtxt('../data/eurlex/x_test.txt')
+        y_test = np.loadtxt('../data/eurlex/y_test.txt')
         return x_train,y_train,x_test,y_test
 
 
@@ -93,6 +100,20 @@ def mae(test_mask,X,result):
 
     return error/count
 
+def auc_score(test_mask,X,a_s,av,bs,bv):
+    true = []
+    score = []
+    for i in range(X.shape[0]):
+        for j in range(X.shape[1]):
+            if test_mask[i,j] == 1.0:
+                if X[i,j] != 0.0:
+                    true.append(1.0)
+                else:
+                    true.append(0.0)
+                score.append(1.0 - np.exp(-np.sum((a_s[i,:]*av[j,:])/(bs[i,:]*bv[j,:]))))
+    gc.collect()
+    return auc(true,score)
+
 
 def check(param,theta_sample,beta_sample,test_mask,X,metric='ndcg'):
     
@@ -111,30 +132,6 @@ def check(param,theta_sample,beta_sample,test_mask,X,metric='ndcg'):
         return ndcg_score(test_mask,X,param.sampled)
     gc.collect()
     
-def check_dual(param1,param2,theta_sample,beta1_sample,beta2_sample,\
-               test_mask1,test_mask2,X1,X2,metric='ndcg'):
-    
-    result1 = np.zeros(shape=[X1.shape[0],X1.shape[1]])
-    result2 = np.zeros(shape=[X2.shape[0],X2.shape[1]])
-    no_sample = theta_sample.shape[0]
-    for i in range(0,no_sample):
-        result1 = np.add(result1,np.matmul(theta_sample[i],beta1_sample[i]))
-        result2 = np.add(result2,np.matmul(theta_sample[i],beta2_sample[i]))
-    
-    result1 /= no_sample
-    result2 /= no_sample
-    param1.sample(result1)
-    param2.sample(result2)
-    
-    del result1
-    del result2
-    
-    if metric == 'mae':
-        return mae(test_mask1,X1,param1.sampled) + mae(test_mask2,X2,param2.sampled)
-    elif metric == 'ndcg':
-        return ndcg_score(test_mask1,X1,param1.sampled) + ndcg_score(test_mask2,X2,param.sampled)
-    gc.collect()
-
 def patk(predict,actual,k=1):
     indices = np.argsort(predict)[::-1][:k]
     result = 0.0
