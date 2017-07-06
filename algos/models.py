@@ -3,6 +3,13 @@ import numpy as np
 from scipy.misc import logsumexp
 from scipy.special import lambertw
 
+class hpf:
+    def __init__(self,users,items):
+        self.sampled = np.zeros(shape=[users,items])
+        
+    def sample(self,count):
+        self.sampled = count
+
 class poisson_response:
     
     def __init__(self,users,items):

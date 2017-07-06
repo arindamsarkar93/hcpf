@@ -100,6 +100,20 @@ def mae(test_mask,X,result):
 
     return error/count
 
+def mae_nz_all(X,result):
+    
+    count = 0.0
+    error = 0.0
+    users = X.shape[0]
+    items = X.shape[1]
+    for i in range(0,users):
+        for j in range(0,items):
+            if X[i,j] != 0:
+                count += 1
+                error += abs(X[i,j]-result[i,j])
+
+    return error/count
+
 def auc_score(test_mask,X,a_s,av,bs,bv):
     true = []
     score = []
@@ -130,6 +144,8 @@ def check(param,theta_sample,beta_sample,test_mask,X,metric='ndcg'):
         return mae(test_mask,X,param.sampled)
     elif metric == 'ndcg':
         return ndcg_score(test_mask,X,param.sampled)
+    elif metric == 'mae_nz_all':
+        return mae_nz_all(X,param.sampled)
     gc.collect()
     
 def patk(predict,actual,k=1):
