@@ -12,10 +12,11 @@ class hpf:
 
 class poisson_response:
     
-    def __init__(self,users,items):
+    def __init__(self,users,items,n_trunc):
         self.lam = 0.0
         self.sampled = np.zeros(shape=[users,items])
-        
+        self.q = np.zeros((users,items,n_trunc))
+        self.en = np.zeros((users,items))
     def set_param(self,lam):
         self.lam = lam
         
@@ -44,18 +45,18 @@ class poisson_response:
         return expec
     
     def expectation_mat(self,x,a,n_trunc):
-        q = np.zeros((x.shape[0],x.shape[1],n_trunc))
         log_a = np.log(a)
-        q[:,:,0] = np.exp(-a)
         for i in range(1,n_trunc):
-            q[:,:,i] = (-i*self.lam) + (x-i)*np.log(i) + i*log_a + i - 1
-        norm = logsumexp(q,axis=2)
-        q = np.exp(q-norm[:,:,np.newaxis])
-        expec = np.zeros_like(x)
+            self.q[:,:,i] = (-i*self.lam) + (x-i)*np.log(i) + i*log_a + i - 1
+        
+        norm = logsumexp(self.q,axis=2)
+        self.q = np.exp(self.q-norm[:,:,np.newaxis])
+                
         for i in range(1,n_trunc):
-            expec += i*q[:,:,i]
-        self.q_mat = q
-        return expec
+            self.en += i*self.q[:,:,i]
+        self.en = np.where(x==0,0.,self.en)    
+            
+        return self.en
     
     def sample(self,count):
         self.sampled = self.lam*count

@@ -106,13 +106,8 @@ def mae_nz_all(X,result):
     error = 0.0
     users = X.shape[0]
     items = X.shape[1]
-    for i in range(0,users):
-        for j in range(0,items):
-            if X[i,j] != 0:
-                count += 1
-                error += abs(X[i,j]-result[i,j])
-
-    return error/count
+    indices = X.nonzero()
+    return np.sum(np.absolute(X[indices]-result[indices]))/indices[0].size
 
 def auc_score(test_mask,X,a_s,av,bs,bv):
     true = []
