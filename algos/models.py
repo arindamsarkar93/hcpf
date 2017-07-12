@@ -41,19 +41,20 @@ class poisson_response:
         expec = 0.0
         for i in range(1,n_trunc+1):
             expec += i*q[i-1]
-        self.q = q
         return expec
     
     def expectation_mat(self,x,a,n_trunc):
         log_a = np.log(a)
-        for i in range(1,n_trunc):
-            self.q[:,:,i] = (-i*self.lam) + (x-i)*np.log(i) + i*log_a + i - 1
+        
+        for i in range(1,n_trunc+1):
+            self.q[:,:,i-1] = (-i*self.lam) + (x-i)*np.log(i) + i*log_a + i - 1
         
         norm = logsumexp(self.q,axis=2)
         self.q = np.exp(self.q-norm[:,:,np.newaxis])
-                
-        for i in range(1,n_trunc):
-            self.en += i*self.q[:,:,i]
+        self.en = np.zeros_like(self.en)
+        
+        for i in range(1,n_trunc+1):
+            self.en += i*self.q[:,:,i-1]
         self.en = np.where(x==0,0.,self.en)    
             
         return self.en
